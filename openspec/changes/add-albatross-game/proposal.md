@@ -19,8 +19,9 @@
   процедурный звук взмаха и ветра с безопасным отключением; переключение языка RU/EN.
 - Инженерная база: чистый домен без pygame, фиксированный шаг симуляции, детерминированный
   RNG, `ruff`, `mypy --strict`, `pytest` + `hypothesis`, покрытие домена 100%, GitHub Actions.
-- Дистрибуция: приватный GitHub-репозиторий, CI-сборка на Linux/Windows/macOS, установщики
-  `.deb`/`.rpm`, Windows `.exe`, macOS `.dmg`; релиз по тегу `v*` с прикреплёнными файлами.
+- Дистрибуция: приватный GitHub-репозиторий, CI-сборка на Linux/Windows, установщики
+  `.deb`/`.rpm` и Windows `.exe`; релиз по тегу `v*` с прикреплёнными файлами. macOS-скрипт
+  и иконка остаются в репозитории, но сборка в CI временно отключена до стабилизации.
 
 Вне объёма первой версии: препятствия, хищники, бонусы, турбулентность/термики, уровни,
 мультиплеер, таблицы лидеров, внешние художественные и звуковые ассеты, мобильные сборки.
@@ -35,8 +36,8 @@
 - `game-session`: жизненный цикл забега (меню → полёт → пауза → проигрыш → рестарт) и
   управление с клавиатуры и мыши.
 - `presentation`: векторный рендер, HUD, параллакс, локализация RU/EN и процедурный звук.
-- `distribution`: самодостаточные сборки и установочные файлы для Linux, Windows и macOS,
-  CI-сборка на трёх ОС и публикация релиза по тегу.
+- `distribution`: самодостаточные сборки и установочные файлы для Linux и Windows,
+  CI-сборка на двух ОС и публикация релиза по тегу; macOS отложен.
 
 ### Modified Capabilities
 
@@ -47,7 +48,8 @@
 - Новый код: `src/albatross/` (домен, рендер, ввод, звук), `tests/`, `pyproject.toml`,
   `main.py`, `README.md`, `.github/workflows/ci.yml`, `.github/workflows/build.yml`.
 - Упаковка: `packaging/linux/` (deb/rpm, desktop, иконка), `packaging/windows/albatross.iss`,
-  `packaging/macos/build_dmg.sh`, `packaging/icons/`; PyInstaller как build-зависимость.
+  `packaging/macos/build_dmg.sh` (отложено), `packaging/icons/`; PyInstaller как
+  build-зависимость.
 - Зависимости: `pygame-ce` (runtime), `pytest`, `pytest-cov`, `hypothesis`, `ruff`, `mypy`,
   `pyinstaller` (dev/build). Внешних ассетов игры нет; иконки генерируются из её графики.
 - Побочные эффекты: файл рекорда в платформенном каталоге (`XDG_DATA_HOME` / `%LOCALAPPDATA%`),

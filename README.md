@@ -14,13 +14,12 @@
 | Linux (Debian/Ubuntu) | `Albatross-<версия>-linux-amd64.deb` | `sudo apt install ./Albatross-*.deb` |
 | Linux (Fedora/RHEL) | `Albatross-<версия>-linux-x86_64.rpm` | `sudo dnf install ./Albatross-*.rpm` |
 | Windows | `Albatross-<версия>-windows-setup.exe` | запустить установщик |
-| macOS | `Albatross-<версия>-macos.dmg` | открыть образ и перетащить `Albatross.app` в `Applications` |
 
-Сборки не подписаны сертификатами Apple и Microsoft:
+macOS-сборка временно отключена в CI; скрипт `packaging/macos/build_dmg.sh` и иконка остаются
+в репозитории и будут включены отдельным изменением после стабилизации.
 
-- Windows SmartScreen может показать предупреждение — «Подробнее» → «Выполнить в любом случае».
-- macOS Gatekeeper: первый запуск через правый клик → «Открыть», либо
-  `xattr -dr com.apple.quarantine /Applications/Albatross.app`.
+Сборки не подписаны сертификатами Microsoft: Windows SmartScreen может показать
+предупреждение — «Подробнее» → «Выполнить в любом случае».
 
 ## Запуск из исходников
 
@@ -115,8 +114,8 @@ uv run pytest
 
 ## Сборка установщиков
 
-`build.yml` собирает артефакты на Ubuntu, Windows и macOS. Локально на Linux можно проверить
-основную часть:
+`build.yml` собирает артефакты на Ubuntu и Windows; macOS-джоба временно отключена. Локально
+на Linux можно проверить основную часть:
 
 ```bash
 uv run pyinstaller --onefile --windowed --noconfirm --clean \
@@ -127,7 +126,7 @@ SKIP_RPM=1 bash packaging/linux/build_packages.sh 0.1.0 dist/Albatross-linux dis
 ```
 
 Без `SKIP_RPM=1` нужен `rpmbuild`; в CI он устанавливается вместе с `rpm`. Windows-установщик
-собирается Inno Setup, macOS-образ — `packaging/macos/build_dmg.sh` на macOS.
+собирается Inno Setup. macOS-образ (`packaging/macos/build_dmg.sh`) пока не входит в CI.
 
 Иконки генерируются из графики игры (нужен Pillow только на этапе генерации):
 
@@ -142,6 +141,6 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-CI проверит тесты, соберёт deb/rpm, exe и dmg и прикрепит их к GitHub Release.
+CI проверит тесты, соберёт deb/rpm и exe и прикрепит их к GitHub Release.
 
 Проект следует спецификации OpenSpec; активный change — `add-albatross-game`.

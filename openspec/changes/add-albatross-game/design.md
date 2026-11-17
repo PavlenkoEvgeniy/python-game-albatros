@@ -177,16 +177,17 @@ HUD — текст и полоса сил, рисуются поверх сце�
 - Windows: Inno Setup (`packaging/windows/albatross.iss`) ставит `.exe`, ярлык «Пуск»,
   деинсталлятор; Inno Setup ставится через Chocolatey на раннере.
 - macOS: `.app` из PyInstaller упаковывается в `.dmg` через `hdiutil` со ссылкой на
-  `/Applications`.
+  `/Applications`; скрипт и иконка хранятся в репозитории, но джоба CI временно отключена до
+  стабилизации сборки.
 Альтернатива — только portable-архивы — отклонена: пользователь просил установочные файлы.
 
 ### 15. CI/CD: два workflow
 
 `ci.yml` отвечает за качество на Python 3.12–3.14. `build.yml` — за дистрибуцию: матрица
-Ubuntu/Windows/macOS, тесты на каждой ОС, PyInstaller, установщики, `upload-artifact`; на теге
-`v*` отдельная job скачивает артефакты и создаёт GitHub Release с deb/rpm/exe/dmg. Права
+Ubuntu/Windows, тесты на каждой ОС, PyInstaller, установщики, `upload-artifact`; на теге `v*`
+отдельная job скачивает артефакты и создаёт GitHub Release с deb/rpm/exe. Права
 `contents: write` только у workflow с релизом. Тег обязан совпадать с версией в `pyproject.toml`
-— это проверяется шагом CI.
+— это проверяется шагом CI. macOS-джоба исключена из матрицы до отдельного включения.
 
 ### 16. Иконки из собственной графики
 
@@ -213,8 +214,9 @@ Ubuntu/Windows/macOS, тесты на каждой ОС, PyInstaller, устан
   `uv.lock`, CI проверяет 3.12–3.14.
 - **PyInstaller может не включить SDL/шрифт pygame** → `--collect-all pygame` и
   `--copy-metadata albatross`, smoke-запуск собранного бинарника с `--version` в CI.
-- **Неподписанные сборки пугают Windows SmartScreen и macOS Gatekeeper** → в README описано,
-  как открыть приложение; подпись и нотаризация — отдельная задача с сертификатами.
+- **Неподписанные сборки пугают Windows SmartScreen** → в README описано, как запустить
+  установщик; подпись и нотаризация — отдельная задача с сертификатами. macOS Gatekeeper
+  станет актуален после возврата macOS-джобы.
 - **Linux-бинарник зависит от glibc раннера** → сборка на `ubuntu-latest` (не ancient),
   deb/rpm не содержат Python; при необходимости старый дистрибутив собирается отдельно.
 - **`rpmbuild` и Inno Setup отсутствуют на раннере** → устанавливаются шагом CI

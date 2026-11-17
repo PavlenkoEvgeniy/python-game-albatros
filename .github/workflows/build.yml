@@ -18,7 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macOS packaging is deferred until its CI build is stable.
+        os: [ubuntu-latest, windows-latest]
     env:
       SDL_VIDEODRIVER: dummy
       SDL_AUDIODRIVER: dummy
@@ -96,22 +97,6 @@ jobs:
             "packaging\windows\albatross.iss"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Build macOS app and disk image
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          uv run pyinstaller --onefile --windowed --noconfirm --clean \
-            --name Albatross \
-            --icon=packaging/icons/albatross.icns \
-            --collect-all pygame \
-            --copy-metadata albatross \
-            main.py
-          dist/Albatross.app/Contents/MacOS/Albatross --version
-          bash packaging/macos/build_dmg.sh \
-            "${{ steps.version.outputs.value }}" \
-            "dist/Albatross.app" \
-            "dist/installers"
-
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
@@ -138,7 +123,6 @@ jobs:
             artifacts/Albatross-Linux/*.deb
             artifacts/Albatross-Linux/*.rpm
             artifacts/Albatross-Windows/*setup.exe
-            artifacts/Albatross-macOS/*.dmg
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
