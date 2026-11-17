@@ -9,8 +9,8 @@ import pygame
 from albatross.presentation import theme
 
 FLAP_DURATION_S = 0.32
-DRAW_SIZE = (48, 32)
-GRID_SIZE = (48, 32)
+DRAW_SIZE = (36, 26)
+GRID_SIZE = (36, 26)
 
 _EMPTY = 0
 _BODY = 1
@@ -85,24 +85,31 @@ def _outline(grid: Grid) -> None:
 
 
 def _frame(wing_lift: float, pitch_slope: float) -> Grid:
+    """Rasterize one pose onto the 36x26 grid.
+
+    The wing amplitudes are budgeted so that even the fully raised wing with the
+    steepest pitch shear keeps its tip inside the grid: the pitch shear moves a
+    pixel at the wing tip by up to ~2.2 pixels, and the raised tip rests ~3.8
+    pixels below the top edge.
+    """
     width, height = GRID_SIZE
     grid = [[_EMPTY for _ in range(width)] for _ in range(height)]
-    cx, cy = 25, 16
+    cx, cy = 18, 16
 
     # Tail and far wing sit behind the body.
     _polygon(
         grid,
-        [(cx - 19, cy + 1), (cx - 25, cy - 4), (cx - 23, cy + 4)],
+        [(cx - 13, cy + 1), (cx - 17, cy - 3), (cx - 15, cy + 3)],
         _SHADE,
     )
     _polygon(
         grid,
         [
-            (cx - 3, cy - 1),
-            (cx - 16, cy - 7 + wing_lift * 7),
-            (cx - 25, cy - 9 + wing_lift * 14),
-            (cx - 18, cy + 1 + wing_lift * 4),
-            (cx - 5, cy + 3),
+            (cx - 2, cy),
+            (cx - 11, cy - 5 + wing_lift * 5),
+            (cx - 17, cy - 6 + wing_lift * 7),
+            (cx - 12, cy + 2 + wing_lift * 3),
+            (cx - 4, cy + 2),
         ],
         _DARK,
     )
@@ -110,43 +117,43 @@ def _frame(wing_lift: float, pitch_slope: float) -> Grid:
     _polygon(
         grid,
         [
-            (cx - 21, cy + 1),
-            (cx - 18, cy - 4),
-            (cx + 2, cy - 6),
-            (cx + 10, cy - 3),
-            (cx + 12, cy + 1),
-            (cx + 5, cy + 5),
-            (cx - 19, cy + 5),
+            (cx - 15, cy + 1),
+            (cx - 13, cy - 3),
+            (cx + 1, cy - 4),
+            (cx + 7, cy - 2),
+            (cx + 8, cy + 1),
+            (cx + 4, cy + 4),
+            (cx - 13, cy + 4),
         ],
         _BODY,
     )
-    _circle(grid, cx + 10, cy - 5, 4, _BODY)
+    _circle(grid, cx + 7, cy - 4, 3, _BODY)
     _polygon(
         grid,
-        [(cx + 14, cy - 5), (cx + 20, cy - 4), (cx + 14, cy - 2)],
+        [(cx + 10, cy - 4), (cx + 14, cy - 3), (cx + 10, cy - 2)],
         _BEAK,
     )
     _polygon(
         grid,
         [
             (cx - 2, cy - 1),
-            (cx - 16, cy - 10 + wing_lift * 9),
-            (cx - 25, cy - 11 + wing_lift * 16),
-            (cx - 17, cy + 2 + wing_lift * 5),
-            (cx - 4, cy + 4),
+            (cx - 12, cy - 6 + wing_lift * 6),
+            (cx - 17, cy - 5 + wing_lift * 8),
+            (cx - 11, cy + 2 + wing_lift * 3.5),
+            (cx - 3, cy + 3),
         ],
         _SHADE,
     )
     _polygon(
         grid,
         [
-            (cx - 25, cy - 11 + wing_lift * 16),
-            (cx - 20, cy - 8 + wing_lift * 12),
-            (cx - 21, cy - 5 + wing_lift * 13),
+            (cx - 17, cy - 5 + wing_lift * 8),
+            (cx - 13, cy - 3 + wing_lift * 6),
+            (cx - 14, cy - 1 + wing_lift * 7),
         ],
         _DARK,
     )
-    _circle(grid, cx + 12, cy - 6, 1, _EYE)
+    _circle(grid, cx + 9, cy - 5, 1, _EYE)
     _outline(grid)
 
     if pitch_slope:
