@@ -62,6 +62,34 @@ def test_wing_phases_produce_distinct_non_empty_sprites() -> None:
     assert all(sprite.get_bounding_rect(min_alpha=1).width > 8 for sprite in sprites)
 
 
+def test_sprite_keeps_clear_of_its_edges_in_every_pose() -> None:
+    bird = Bird()
+    speeds = (-100.0, -2.0, 0.0, 2.0, 100.0)
+
+    for lift in (-0.9, -0.2, 0.35, 0.9):
+        for speed in speeds:
+            sprite = bird._sprite_for(lift, speed)
+            width, height = sprite.get_size()
+            edge_pixels = (
+                [(x, 0) for x in range(width)]
+                + [(x, height - 1) for x in range(width)]
+                + [(0, y) for y in range(height)]
+                + [(width - 1, y) for y in range(height)]
+            )
+            assert all(sprite.get_at(pixel).a == 0 for pixel in edge_pixels), (lift, speed)
+
+
+def test_sprite_footprint_is_smaller_than_the_previous_design() -> None:
+    bird = Bird()
+
+    for lift in (-0.9, -0.2, 0.35, 0.9):
+        sprite = bird._sprite_for(lift, 0.0)
+        bounds = sprite.get_bounding_rect(min_alpha=1)
+
+        assert bounds.width <= 34
+        assert bounds.height <= 20
+
+
 def test_pitch_poses_are_distinct_and_cached() -> None:
     bird = Bird()
 

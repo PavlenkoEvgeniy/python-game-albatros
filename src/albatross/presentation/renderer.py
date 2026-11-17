@@ -98,8 +98,8 @@ class Renderer:
             length = round((10 + index * 4) * strength)
             if length <= 0:
                 continue
-            x = center[0] - 13 - index * 2
-            y = center[1] - 3 + index * 2
+            x = center[0] - 10 - index * 2
+            y = center[1] - 2 + index * 2
             pygame.draw.line(
                 self._scene_surface,
                 theme.lerp_color(theme.SKY_HORIZON, theme.TEXT, 0.55),
