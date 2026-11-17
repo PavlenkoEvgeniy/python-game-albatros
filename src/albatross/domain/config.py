@@ -20,11 +20,11 @@ class FlightConfig:
     """
 
     start_altitude_m: float = 50.0
-    horizontal_speed_mps: float = 24.0
-    glide_accel_mps2: float = 3.0
-    glide_sink_mps: float = 2.2
-    flap_up_speed_mps: float = 12.0
-    flap_cooldown_s: float = 0.25
+    horizontal_speed_mps: float = 40.0
+    glide_accel_mps2: float = 6.0
+    glide_sink_mps: float = 3.4
+    flap_up_speed_mps: float = 14.0
+    flap_cooldown_s: float = 0.2
     stamina_max: float = 100.0
     flap_stamina_cost: float = 20.0
     meters_to_pixels: float = 8.0

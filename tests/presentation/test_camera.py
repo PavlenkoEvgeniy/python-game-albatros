@@ -14,7 +14,7 @@ def test_first_follow_frames_the_bird_at_the_anchor() -> None:
     camera.follow(world_x_m=100.0, altitude_m=50.0, dt=0.0)
 
     assert camera.initialized is True
-    assert camera.screen_x(100.0) == pytest.approx(800 * 0.30)
+    assert camera.screen_x(100.0) == pytest.approx(800 * camera.anchor_x_ratio)
     assert camera.screen_y(50.0) == pytest.approx(400 * 0.40)
 
 
@@ -23,7 +23,7 @@ def test_horizontal_tracking_is_exact() -> None:
     camera.follow(0.0, 50.0, 0.0)
     camera.follow(25.0, 50.0, 1 / 60)
 
-    assert camera.screen_x(25.0) == pytest.approx(800 * 0.30)
+    assert camera.screen_x(25.0) == pytest.approx(800 * camera.anchor_x_ratio)
 
 
 def test_vertical_follow_is_smoothed() -> None:
@@ -51,7 +51,7 @@ def test_zero_dt_keeps_the_vertical_position() -> None:
     camera.follow(30.0, 10.0, 0.0)
 
     assert camera.altitude_m == altitude
-    assert camera.screen_x(30.0) == pytest.approx(800 * 0.30)
+    assert camera.screen_x(30.0) == pytest.approx(800 * camera.anchor_x_ratio)
 
 
 def test_camera_never_goes_below_ground() -> None:

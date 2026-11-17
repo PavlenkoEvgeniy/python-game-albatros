@@ -17,7 +17,7 @@ class Camera:
     width: int
     height: int
     pixels_per_meter: float
-    anchor_x_ratio: float = 0.30
+    anchor_x_ratio: float = 0.26
     anchor_y_ratio: float = 0.40
     smoothing_tau_s: float = 0.16
     x_m: float = 0.0
