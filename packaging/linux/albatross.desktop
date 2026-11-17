@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Albatross
+Name[ru]=Альбатрос
+Comment=Glide from a mountain as an albatross
+Comment[ru]=Аркада про планирующего альбатроса
+Exec=albatross
+Icon=albatross
+Terminal=false
+Categories=Game;ArcadeGame;
+Keywords=game;bird;glide;albatross;
+StartupWMClass=Albatross

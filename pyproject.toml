@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "albatross"
+version = "0.1.0"
+description = "A calm arcade game about an albatross gliding from a mountain"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "platformdirs>=4.3",
+    "pygame-ce>=2.5.8",
+]
+
+[project.scripts]
+albatross = "albatross.__main__:main"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.120",
+    "mypy>=1.15",
+    "pyinstaller>=6.22.3",
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.11",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/albatross"]
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "N", "PT", "RUF", "SIM", "UP", "W"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["albatross"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["pygame", "pygame.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--cov=albatross.domain",
+    "--cov=albatross.infrastructure",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-fail-under=100",
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
