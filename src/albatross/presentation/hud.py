@@ -6,7 +6,7 @@ import math
 
 import pygame
 
-from albatross.domain.config import FlightConfig
+from albatross.domain.config import FlightConfig, SpeedPreset
 from albatross.domain.session import GamePhase, SessionState
 from albatross.presentation import theme
 from albatross.presentation.fonts import render_text
@@ -200,10 +200,24 @@ class Hud:
 
         _draw_text(
             surface,
-            translator.text(TextKey.MENU_CONTROLS),
+            translator.text(TextKey.MENU_CONTROLS_FLIGHT),
+            19,
+            theme.TEXT_MUTED,
+            ("center", (self._width // 2, self._height - 92)),
+        )
+        _draw_text(
+            surface,
+            translator.text(TextKey.MENU_CONTROLS_SETTINGS),
             19,
             theme.TEXT_MUTED,
             ("center", (self._width // 2, self._height - 72)),
+        )
+        _draw_text(
+            surface,
+            self._speed_text(state, translator),
+            18,
+            theme.TEXT_MUTED,
+            ("bottomleft", (40, self._height - 34)),
         )
         _draw_text(
             surface,
@@ -295,9 +309,26 @@ class Hud:
             theme.TEXT,
             ("center", (panel.centerx, panel.bottom - 42)),
         )
+        _draw_text(
+            surface,
+            self._speed_text(state, translator),
+            20,
+            theme.TEXT_MUTED,
+            ("center", (panel.centerx, panel.bottom - 74)),
+        )
 
     def _overlay(self, surface: pygame.Surface) -> None:
         surface.blit(self._pause_overlay, (0, 0))
+
+    @staticmethod
+    def _speed_text(state: SessionState, translator: Translator) -> str:
+        preset_labels = {
+            SpeedPreset.CALM: TextKey.SPEED_CALM,
+            SpeedPreset.NORMAL: TextKey.SPEED_NORMAL,
+            SpeedPreset.SWIFT: TextKey.SPEED_SWIFT,
+        }
+        label = translator.text(preset_labels[state.speed])
+        return f"{translator.text(TextKey.SPEED_LABEL)}: {label}"
 
     @staticmethod
     def _record_value(best: int | None, translator: Translator) -> str:

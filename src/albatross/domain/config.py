@@ -8,7 +8,37 @@ touching the rules.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Final
+
+
+class SpeedPreset(StrEnum):
+    """Named game-speed settings the player picks between runs."""
+
+    CALM = "calm"
+    NORMAL = "normal"
+    SWIFT = "swift"
+
+
+#: How much faster than normal each preset plays. The factor scales every
+#: motion rate of the flight, so a preset is a coherent fast-forward or
+#: slow-motion of the whole game rather than a single knob.
+SPEED_FACTORS: Final[dict[SpeedPreset, float]] = {
+    SpeedPreset.CALM: 0.7,
+    SpeedPreset.NORMAL: 1.0,
+    SpeedPreset.SWIFT: 1.4,
+}
+
+SPEED_CYCLE: Final[tuple[SpeedPreset, ...]] = (
+    SpeedPreset.CALM,
+    SpeedPreset.NORMAL,
+    SpeedPreset.SWIFT,
+)
+
+
+def next_speed(current: SpeedPreset) -> SpeedPreset:
+    """Return the preset that follows ``current`` in the settings cycle."""
+    return SPEED_CYCLE[(SPEED_CYCLE.index(current) + 1) % len(SPEED_CYCLE)]
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +60,7 @@ class FlightConfig:
     meters_to_pixels: float = 8.0
     step_s: float = 1.0 / 120.0
     max_frame_s: float = 0.25
+    speed: SpeedPreset = SpeedPreset.NORMAL
 
     def __post_init__(self) -> None:
         positive = (

@@ -9,7 +9,7 @@ from typing import Protocol
 import pygame
 
 from albatross.application.timing import FixedStepClock
-from albatross.domain.config import DEFAULT_FLIGHT_CONFIG
+from albatross.domain.config import DEFAULT_FLIGHT_CONFIG, next_speed
 from albatross.domain.session import GamePhase, GameSession, SessionState
 from albatross.infrastructure.records import RecordStore
 from albatross.presentation import theme
@@ -154,6 +154,10 @@ class GameApp:
             self._translator.toggle()
         elif key == pygame.K_m:
             self._sound.toggle_mute()
+        elif key == pygame.K_s:
+            # The session ignores the command outside the menu and game-over
+            # screens, so pressing S mid-flight changes nothing.
+            self._session.set_speed(next_speed(self._session.config.speed))
 
     def _primary_action(self) -> None:
         state = self._session.state

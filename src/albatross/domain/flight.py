@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from albatross.domain.config import FlightConfig
+from albatross.domain.config import SPEED_FACTORS, FlightConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +34,11 @@ class FlightModel:
 
     def __init__(self, config: FlightConfig) -> None:
         self._config = config
+        factor = SPEED_FACTORS[config.speed]
+        self._horizontal_mps = config.horizontal_speed_mps * factor
+        self._glide_accel_mps2 = config.glide_accel_mps2 * factor
+        self._glide_sink_mps = config.glide_sink_mps * factor
+        self._flap_up_mps = config.flap_up_speed_mps * factor
 
     @property
     def config(self) -> FlightConfig:
@@ -62,11 +67,11 @@ class FlightModel:
 
         cooldown = max(0.0, state.cooldown_s - dt)
         vertical_speed = min(
-            state.vertical_speed_mps + self._config.glide_accel_mps2 * dt,
-            self._config.glide_sink_mps,
+            state.vertical_speed_mps + self._glide_accel_mps2 * dt,
+            self._glide_sink_mps,
         )
         altitude = state.altitude_m - vertical_speed * dt
-        x_m = state.x_m + self._config.horizontal_speed_mps * dt
+        x_m = state.x_m + self._horizontal_mps * dt
 
         if altitude <= 0.0:
             return FlightState(
@@ -98,7 +103,7 @@ class FlightModel:
         return (
             replace(
                 state,
-                vertical_speed_mps=-self._config.flap_up_speed_mps,
+                vertical_speed_mps=-self._flap_up_mps,
                 stamina=state.stamina - self._config.flap_stamina_cost,
                 cooldown_s=self._config.flap_cooldown_s,
             ),
