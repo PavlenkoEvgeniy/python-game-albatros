@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pygame
 
-from albatross.domain.config import DEFAULT_FLIGHT_CONFIG
+from albatross.domain.config import DEFAULT_FLIGHT_CONFIG, SpeedPreset
 from albatross.domain.flight import FlightState
 from albatross.domain.session import GamePhase, SessionState
 from albatross.presentation.hud import Hud
@@ -19,6 +19,7 @@ def make_state(
     best: int | None = 500,
     phase: GamePhase = GamePhase.PLAYING,
     new_record: bool = False,
+    speed: SpeedPreset = SpeedPreset.NORMAL,
 ) -> SessionState:
     flight = FlightState(
         x_m=distance_m,
@@ -33,6 +34,7 @@ def make_state(
         best_distance_m=best,
         last_distance_m=round(distance_m) if phase is GamePhase.GAME_OVER else None,
         new_record=new_record,
+        speed=speed,
     )
 
 
@@ -85,3 +87,13 @@ def test_sound_status_and_pause_overlay_render() -> None:
 
     assert pygame.image.tobytes(muted, "RGBA") != pygame.image.tobytes(unmuted, "RGBA")
     assert pygame.image.tobytes(paused, "RGBA") != pygame.image.tobytes(unmuted, "RGBA")
+
+
+def test_menu_and_game_over_show_the_speed_preset() -> None:
+    calm_menu = draw(make_state(phase=GamePhase.MENU, speed=SpeedPreset.CALM))
+    swift_menu = draw(make_state(phase=GamePhase.MENU, speed=SpeedPreset.SWIFT))
+    calm_over = draw(make_state(phase=GamePhase.GAME_OVER, speed=SpeedPreset.CALM))
+    swift_over = draw(make_state(phase=GamePhase.GAME_OVER, speed=SpeedPreset.SWIFT))
+
+    assert pygame.image.tobytes(calm_menu, "RGBA") != pygame.image.tobytes(swift_menu, "RGBA")
+    assert pygame.image.tobytes(calm_over, "RGBA") != pygame.image.tobytes(swift_over, "RGBA")

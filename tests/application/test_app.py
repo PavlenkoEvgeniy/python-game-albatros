@@ -7,7 +7,7 @@ import pygame
 import pytest
 
 from albatross.application.app import GameApp
-from albatross.domain.config import DEFAULT_FLIGHT_CONFIG, FlightConfig
+from albatross.domain.config import DEFAULT_FLIGHT_CONFIG, FlightConfig, SpeedPreset
 from albatross.domain.session import GamePhase, GameSession
 from albatross.infrastructure.records import RecordStore
 from albatross.presentation.audio import NullAudioBackend, SoundEngine
@@ -191,3 +191,22 @@ def test_record_write_failure_does_not_crash(
 
     assert app.session.state.phase is GamePhase.GAME_OVER
     assert not store.path.exists()
+
+
+def test_s_key_cycles_speed_between_runs_and_not_mid_flight(tmp_path: Path) -> None:
+    app, _store = make_app(tmp_path)
+
+    app.tick([key_event(pygame.K_s)], 0.1)
+    assert app.session.config.speed is SpeedPreset.SWIFT
+
+    app.tick([key_event(pygame.K_s)], 0.1)
+    assert app.session.config.speed is SpeedPreset.CALM
+
+    app.tick([key_event(pygame.K_s)], 0.1)
+    assert app.session.config.speed is SpeedPreset.NORMAL
+
+    # Mid-flight the session rejects the change: the run keeps its physics.
+    app.tick([key_event(pygame.K_SPACE)], 0.1)
+    app.tick([key_event(pygame.K_s)], 0.1)
+    assert app.session.state.phase is GamePhase.PLAYING
+    assert app.session.config.speed is SpeedPreset.NORMAL

@@ -19,7 +19,8 @@ class TextKey(StrEnum):
     TITLE = "title"
     SUBTITLE = "subtitle"
     START_HINT = "start_hint"
-    MENU_CONTROLS = "menu_controls"
+    MENU_CONTROLS_FLIGHT = "menu_controls_flight"
+    MENU_CONTROLS_SETTINGS = "menu_controls_settings"
     DISTANCE_LABEL = "distance_label"
     BEST_LABEL = "best_label"
     BEST_EMPTY = "best_empty"
@@ -34,6 +35,10 @@ class TextKey(StrEnum):
     PLAY_HINT = "play_hint"
     SOUND_ON = "sound_on"
     SOUND_OFF = "sound_off"
+    SPEED_LABEL = "speed_label"
+    SPEED_CALM = "speed_calm"
+    SPEED_NORMAL = "speed_normal"
+    SPEED_SWIFT = "speed_swift"
 
 
 TRANSLATIONS: dict[Language, dict[TextKey, str]] = {
@@ -41,9 +46,8 @@ TRANSLATIONS: dict[Language, dict[TextKey, str]] = {
         TextKey.TITLE: "АЛЬБАТРОС",
         TextKey.SUBTITLE: "Полёт над долиной",
         TextKey.START_HINT: "Пробел или клик — начать полёт",
-        TextKey.MENU_CONTROLS: (
-            "Пробел / клик — взмах   ·   Esc — пауза   ·   L — язык   ·   M — звук"
-        ),
+        TextKey.MENU_CONTROLS_FLIGHT: "Пробел / клик — взмах   ·   Esc — пауза",
+        TextKey.MENU_CONTROLS_SETTINGS: "L — язык   ·   M — звук   ·   S — скорость",
         TextKey.DISTANCE_LABEL: "Дистанция",
         TextKey.BEST_LABEL: "Рекорд",
         TextKey.BEST_EMPTY: "—",
@@ -58,14 +62,17 @@ TRANSLATIONS: dict[Language, dict[TextKey, str]] = {
         TextKey.PLAY_HINT: "Esc — пауза     L — язык     M — звук",
         TextKey.SOUND_ON: "Звук: вкл",
         TextKey.SOUND_OFF: "Звук: выкл",
+        TextKey.SPEED_LABEL: "Скорость",
+        TextKey.SPEED_CALM: "Спокойно",
+        TextKey.SPEED_NORMAL: "Обычно",
+        TextKey.SPEED_SWIFT: "Стремительно",
     },
     Language.EN: {
         TextKey.TITLE: "ALBATROSS",
         TextKey.SUBTITLE: "Flight over the valley",
         TextKey.START_HINT: "Press Space or click to start",
-        TextKey.MENU_CONTROLS: (
-            "Space / click — flap   ·   Esc — pause   ·   L — language   ·   M — sound"
-        ),
+        TextKey.MENU_CONTROLS_FLIGHT: "Space / click — flap   ·   Esc — pause",
+        TextKey.MENU_CONTROLS_SETTINGS: "L — language   ·   M — sound   ·   S — speed",
         TextKey.DISTANCE_LABEL: "Distance",
         TextKey.BEST_LABEL: "Best",
         TextKey.BEST_EMPTY: "—",
@@ -80,6 +87,10 @@ TRANSLATIONS: dict[Language, dict[TextKey, str]] = {
         TextKey.PLAY_HINT: "Esc — pause     L — language     M — sound",
         TextKey.SOUND_ON: "Sound: on",
         TextKey.SOUND_OFF: "Sound: off",
+        TextKey.SPEED_LABEL: "Speed",
+        TextKey.SPEED_CALM: "Calm",
+        TextKey.SPEED_NORMAL: "Normal",
+        TextKey.SPEED_SWIFT: "Swift",
     },
 }
 

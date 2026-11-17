@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
-from albatross.domain.config import DEFAULT_FLIGHT_CONFIG, FlightConfig
+from albatross.domain.config import DEFAULT_FLIGHT_CONFIG, FlightConfig, SpeedPreset
 from albatross.domain.flight import FlightModel, FlightState
 from albatross.domain.scoring import updated_best
 
@@ -29,6 +29,7 @@ class SessionState:
     best_distance_m: int | None
     last_distance_m: int | None
     new_record: bool = False
+    speed: SpeedPreset = SpeedPreset.NORMAL
 
 
 class GameSession:
@@ -45,6 +46,7 @@ class GameSession:
             flight=self._model.initial_state(),
             best_distance_m=best_distance_m,
             last_distance_m=None,
+            speed=config.speed,
         )
 
     @property
@@ -76,6 +78,20 @@ class GameSession:
         if accepted:
             self._state = replace(self._state, flight=flight)
         return accepted
+
+    def set_speed(self, preset: SpeedPreset) -> bool:
+        """Switch the speed preset; only allowed between runs.
+
+        Changing the physics mid-flight would alter a run in progress, so the
+        setting applies from the next run onward (menu or game-over screen).
+        """
+        if self._state.phase not in (GamePhase.MENU, GamePhase.GAME_OVER):
+            return False
+        if preset is self._model.config.speed:
+            return False
+        self._model = FlightModel(replace(self._model.config, speed=preset))
+        self._state = replace(self._state, speed=preset)
+        return True
 
     def toggle_pause(self) -> bool:
         """Toggle between playing and paused; ignore other phases."""
