@@ -38,17 +38,24 @@ def _draw_text(
             rect.center = anchor[1]
     if shadow:
         shadow_image = render_text(text, size, theme.TEXT_SHADOW)
-        surface.blit(shadow_image, rect.move(2, 2))
+        surface.blit(shadow_image, rect.move(theme.PIXEL_SCALE, theme.PIXEL_SCALE))
     surface.blit(image, rect)
     return rect
 
 
 class Hud:
-    """Draws the HUD for every game phase."""
+    """Draws the output-resolution HUD in the game's pixel-art language."""
 
     def __init__(self, config: FlightConfig, size: tuple[int, int]) -> None:
         self._config = config
         self._width, self._height = size
+        self._menu_overlay = self._make_overlay(48)
+        self._pause_overlay = self._make_overlay(150)
+
+    def _make_overlay(self, alpha: int) -> pygame.Surface:
+        overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
+        overlay.fill((6, 10, 18, alpha))
+        return overlay
 
     def draw(
         self,
@@ -106,14 +113,21 @@ class Hud:
             theme.TEXT_MUTED,
             ("topleft", (42, 34)),
         )
-        bar = pygame.Rect(42, label_rect.bottom + 6, 300, 18)
-        theme.rounded_rect(surface, bar, theme.STAMINA_TRACK, radius=9)
-        fill_width = round((bar.width - 4) * fraction)
+        bar = pygame.Rect(40, theme.snap(label_rect.bottom + 4), 304, 16)
+        theme.pixel_panel(surface, bar, theme.STAMINA_TRACK, cut=4)
+        fill_width = theme.snap((bar.width - 8) * fraction)
         if fill_width > 0:
-            fill = pygame.Rect(bar.x + 2, bar.y + 2, fill_width, bar.height - 4)
+            fill = pygame.Rect(bar.x + 4, bar.y + 4, fill_width, bar.height - 8)
             color = theme.STAMINA_LOW if fraction < 0.25 else theme.STAMINA_FILL
-            theme.rounded_rect(surface, fill, color, radius=7)
-        theme.rounded_rect(surface, bar, theme.STAMINA_BORDER, radius=9, width=1)
+            pygame.draw.rect(surface, color, fill)
+        theme.pixel_panel(
+            surface,
+            bar,
+            None,
+            border=theme.STAMINA_BORDER,
+            cut=4,
+            border_width=1,
+        )
 
     def _draw_distance(
         self,
@@ -153,9 +167,7 @@ class Hud:
         muted: bool,
         elapsed_s: float,
     ) -> None:
-        overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
-        overlay.fill((6, 10, 18, 48))
-        surface.blit(overlay, (0, 0))
+        surface.blit(self._menu_overlay, (0, 0))
 
         _draw_text(
             surface,
@@ -203,10 +215,11 @@ class Hud:
 
     def _draw_pause(self, surface: pygame.Surface, translator: Translator) -> None:
         self._overlay(surface)
-        panel = pygame.Rect(0, 0, 520, 210)
+        panel = pygame.Rect(0, 0, 528, 208)
         panel.center = (self._width // 2, self._height // 2)
-        theme.rounded_rect(surface, panel, theme.PANEL, radius=24)
-        theme.rounded_rect(surface, panel, theme.PANEL_BORDER, radius=24, width=1)
+        theme.pixel_panel(surface, panel, theme.PANEL, border=theme.PANEL_BORDER, cut=16)
+        inner = panel.inflate(-theme.PIXEL_SCALE * 2, -theme.PIXEL_SCALE * 2)
+        theme.pixel_panel(surface, inner, None, border=theme.PANEL_INNER, cut=12, border_width=1)
         _draw_text(
             surface,
             translator.text(TextKey.PAUSED),
@@ -229,10 +242,11 @@ class Hud:
         translator: Translator,
     ) -> None:
         self._overlay(surface)
-        panel = pygame.Rect(0, 0, 640, 350)
+        panel = pygame.Rect(0, 0, 640, 352)
         panel.center = (self._width // 2, self._height // 2)
-        theme.rounded_rect(surface, panel, theme.PANEL, radius=24)
-        theme.rounded_rect(surface, panel, theme.PANEL_BORDER, radius=24, width=1)
+        theme.pixel_panel(surface, panel, theme.PANEL, border=theme.PANEL_BORDER, cut=16)
+        inner = panel.inflate(-theme.PIXEL_SCALE * 2, -theme.PIXEL_SCALE * 2)
+        theme.pixel_panel(surface, inner, None, border=theme.PANEL_INNER, cut=12, border_width=1)
 
         _draw_text(
             surface,
@@ -283,9 +297,7 @@ class Hud:
         )
 
     def _overlay(self, surface: pygame.Surface) -> None:
-        overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
-        overlay.fill((6, 10, 18, 150))
-        surface.blit(overlay, (0, 0))
+        surface.blit(self._pause_overlay, (0, 0))
 
     @staticmethod
     def _record_value(best: int | None, translator: Translator) -> str:

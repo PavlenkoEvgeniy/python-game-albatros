@@ -17,5 +17,5 @@ def get_font(size: int) -> pygame.font.Font:
 
 
 def render_text(text: str, size: int, color: tuple[int, int, int]) -> pygame.Surface:
-    """Render anti-aliased text with the default font."""
-    return get_font(size).render(text, True, color)
+    """Render crisp, non-anti-aliased text with the built-in font."""
+    return get_font(size).render(text, False, color)

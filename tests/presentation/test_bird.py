@@ -50,3 +50,25 @@ def test_draw_handles_extreme_vertical_speeds() -> None:
     bird.draw(surface, (200, 150), vertical_speed=-100.0)
     bird.draw(surface, (200, 150), vertical_speed=100.0)
     assert surface.get_bounding_rect(min_alpha=1).width > 0
+
+
+def test_wing_phases_produce_distinct_non_empty_sprites() -> None:
+    bird = Bird()
+
+    sprites = [bird._sprite_for(lift, 0.0) for lift in (-0.9, -0.2, 0.35, 0.9)]
+    payloads = {pygame.image.tobytes(sprite, "RGBA") for sprite in sprites}
+
+    assert len(payloads) == len(sprites)
+    assert all(sprite.get_bounding_rect(min_alpha=1).width > 8 for sprite in sprites)
+
+
+def test_pitch_poses_are_distinct_and_cached() -> None:
+    bird = Bird()
+
+    climbing = bird._sprite_for(0.0, -20.0)
+    level = bird._sprite_for(0.0, 0.0)
+    diving = bird._sprite_for(0.0, 20.0)
+
+    assert pygame.image.tobytes(climbing, "RGBA") != pygame.image.tobytes(level, "RGBA")
+    assert pygame.image.tobytes(diving, "RGBA") != pygame.image.tobytes(level, "RGBA")
+    assert bird._sprite_for(0.0, 20.0) is diving

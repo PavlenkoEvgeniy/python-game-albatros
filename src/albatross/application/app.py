@@ -16,6 +16,7 @@ from albatross.presentation import theme
 from albatross.presentation.audio import SoundEngine
 from albatross.presentation.i18n import Translator
 from albatross.presentation.renderer import Renderer
+from albatross.presentation.window_icon import apply_window_icon
 
 
 class Clock(Protocol):
@@ -60,6 +61,9 @@ class GameApp:
         pygame.init()
         pygame.display.set_caption("Albatross")
         screen = pygame.display.set_mode((theme.WINDOW_WIDTH, theme.WINDOW_HEIGHT))
+        # X11 publishes _NET_WM_ICON only after the window exists; the helper
+        # adds a libX11 fallback for SDL/Xwayland combinations that skip it.
+        apply_window_icon()
 
         config = DEFAULT_FLIGHT_CONFIG
         store = RecordStore()
@@ -76,11 +80,17 @@ class GameApp:
 
     def run(self) -> None:
         """Run the interactive loop until the window closes."""
+        first_frame = True
         try:
             while self._running:
                 frame_s = self._clock.tick(theme.FPS) / 1000.0
                 self.tick(pygame.event.get(), frame_s)
                 pygame.display.flip()
+                if first_frame:
+                    # SDL may only map the X11 window on the first flip and
+                    # overwrite an icon published before that point.
+                    apply_window_icon()
+                    first_frame = False
         finally:
             pygame.quit()
 
