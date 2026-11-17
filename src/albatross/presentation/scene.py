@@ -18,7 +18,18 @@ from albatross.presentation.camera import Camera
 # Parallax factors of the four ridge planes, deepest first. The visible drift
 # speed grows monotonically with each nearer plane, which is what makes the
 # farthest haze read as genuine distance.
-RIDGE_PARALLAX = (0.015, 0.03, 0.10, 0.26)
+RIDGE_PARALLAX = (0.015, 0.035, 0.18, 0.50)
+
+# Nominal crest heights of the four planes as fractions of the logical height,
+# deepest first. Every plane is drawn with extra depth below its nominal band so
+# its body always reaches behind the nearer planes and the ground: without it,
+# the flat bottom edge of a distant texture shows sky through beneath it and the
+# mountains read as floating islands.
+RIDGE_HEIGHTS = (0.24, 0.36, 0.30, 0.19)
+RIDGE_EXTRA_DEPTH = 0.30
+
+# Distance milestones stand in the grass every 50 metres of world space.
+MARKER_SPAN_M = 50.0
 
 GRASS_BAND_BOTTOM = 24
 
@@ -56,13 +67,19 @@ def _ridge_height(t: float, amplitude: float, phase: float) -> float:
 
 def _make_ridge(
     width: int,
-    height: int,
+    nominal_height: int,
+    extra_depth: int,
     palette: _RidgePalette,
     phase: float,
     amplitude: float,
     seed: int,
 ) -> pygame.Surface:
-    """Draw a tileable mountain layer with volume, lit crests and scree."""
+    """Draw a tileable mountain layer with volume, lit crests and scree.
+
+    ``extra_depth`` appends solid mountain mass below the nominal band so the
+    plane continues behind nearer planes and the ground line.
+    """
+    height = nominal_height + extra_depth
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
     rng = random.Random(seed)
 
@@ -77,14 +94,15 @@ def _make_ridge(
 
     heights: list[int] = []
     for x in range(width):
-        crest = height * _ridge_height(x / max(1, width - 1), amplitude, phase)
-        heights.append(max(2, min(height - 1, round(height - crest))))
+        crest = nominal_height * _ridge_height(x / max(1, width - 1), amplitude, phase)
+        heights.append(max(2, min(height - 1, round(nominal_height - crest))))
     heights[-1] = heights[0]
 
     # Vertical light falloff: lit rock below the crest dithers into shadow at
-    # the foot, which gives the silhouette mass instead of a flat fill.
+    # the foot, which gives the silhouette mass instead of a flat fill. Below
+    # the nominal band the gradient clamps to full shadow.
     for x, ridge_y in enumerate(heights):
-        depth = max(1, height - ridge_y)
+        depth = max(1, nominal_height - ridge_y)
         for y in range(ridge_y, height):
             t = (y - ridge_y) / depth
             if t < 0.30:
@@ -124,7 +142,7 @@ def _make_ridge(
     if snow is not None:
         for x in range(width):
             ridge_y = heights[x]
-            if ridge_y >= round(height * 0.34):
+            if ridge_y >= round(nominal_height * 0.34):
                 continue
             depth = 2 + (x * 13 + seed) % 4
             for y in range(ridge_y, min(height, ridge_y + depth)):
@@ -134,6 +152,7 @@ def _make_ridge(
 
 
 def _make_cloud(width: int, height: int, rng: random.Random) -> pygame.Surface:
+    """Sunset-lit cloud: violet tops, warm light dithering in from below."""
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
     puffs = (
         (0.02, 0.40, 0.52, 0.42),
@@ -141,34 +160,44 @@ def _make_cloud(width: int, height: int, rng: random.Random) -> pygame.Surface:
         (0.44, 0.32, 0.43, 0.42),
         (0.12, 0.54, 0.72, 0.28),
     )
+    rects = []
     for left, top, width_ratio, height_ratio in puffs:
-        pygame.draw.rect(
-            surface,
-            theme.CLOUD_SHADE,
-            pygame.Rect(
-                round(width * left),
-                round(height * top),
-                max(2, round(width * width_ratio)),
-                max(1, round(height * height_ratio)),
-            ),
+        rect = pygame.Rect(
+            round(width * left),
+            round(height * top),
+            max(2, round(width * width_ratio)),
+            max(1, round(height * height_ratio)),
         )
-    for left, top, width_ratio, height_ratio in puffs:
-        pygame.draw.rect(
-            surface,
-            theme.CLOUD_LIGHT,
-            pygame.Rect(
-                round(width * left),
-                round(height * top),
-                max(2, round(width * width_ratio)),
-                max(1, round(height * height_ratio * 0.5)),
-            ),
-        )
+        rects.append(rect)
+        pygame.draw.rect(surface, theme.CLOUD_SHADE, rect)
+
+    # The sun sits below the clouds, so their undersides catch the warm light:
+    # the lower 45% of every puff dithers from violet shade into the lit tone.
+    for rect in rects:
+        band_top = rect.top + round(rect.height * 0.55)
+        band_height = max(1, rect.bottom - band_top)
+        for y in range(band_top, rect.bottom):
+            amount = (y - band_top + 1) / band_height * 1.2
+            for x in range(rect.left, rect.right):
+                if surface.get_at((x, y)).a:
+                    surface.set_at(
+                        (x, y),
+                        theme.dither_color(theme.CLOUD_SHADE, theme.CLOUD_LIGHT, x, y, amount),
+                    )
+        for x in range(rect.left, rect.right):
+            if surface.get_at((x, rect.bottom - 1)).a:
+                surface.set_at((x, rect.bottom - 1), theme.CLOUD_LIGHT)
     if width > 34 and rng.random() < 0.8:
-        pygame.draw.rect(
-            surface,
-            theme.CLOUD_LIGHT,
-            (width // 3, height // 5, max(2, width // 4), max(1, height // 3)),
+        highlight = pygame.Rect(
+            width // 3,
+            round(height * 0.6),
+            max(2, width // 4),
+            max(1, round(height * 0.3)),
         )
+        pygame.draw.rect(surface, theme.CLOUD_LIGHT, highlight)
+        for x in range(highlight.left, highlight.right):
+            if highlight.top > 0 and surface.get_at((x, highlight.top - 1)).a:
+                surface.set_at((x, highlight.top - 1), theme.CLOUD_LIGHT)
     return surface
 
 
@@ -179,6 +208,22 @@ def _make_sun(radius: int) -> pygame.Surface:
     pygame.draw.circle(surface, theme.SUN_RING, center, radius)
     pygame.draw.circle(surface, theme.SUN_GLOW, center, max(2, round(radius * 0.72)))
     pygame.draw.circle(surface, theme.SUN_CORE, center, max(2, round(radius * 0.48)))
+    return surface
+
+
+def _make_marker() -> pygame.Surface:
+    """A distance milestone: a pylon with a cream pennant, planted in the grass."""
+    surface = pygame.Surface((9, 16), pygame.SRCALPHA)
+    # pole with a dark right edge so it reads against sky and grass alike
+    for y in range(4, 16):
+        surface.set_at((2, y), theme.TEXT)
+        surface.set_at((3, y), theme.TEXT_SHADOW)
+    # right-pointing pennant with an accent tip
+    for row in range(5):
+        for x in range(6 - row):
+            surface.set_at((2 + x, row), theme.TEXT)
+    surface.set_at((7, 0), theme.ACCENT)
+    surface.set_at((6, 1), theme.ACCENT)
     return surface
 
 
@@ -261,15 +306,18 @@ class Scene:
         )
         self._altitude_tints = self._make_altitude_tints()
 
-        self._sun = _make_sun(max(5, round(self._height * 0.055)))
+        self._sun = _make_sun(max(5, round(self._height * 0.065)))
         self._sun_position = (round(self._width * 0.81), round(self._height * 0.16))
+        self._bake_sun_glow(round(self._height * 0.22))
 
         self._far_width = self._width * 2
+        extra_depth = round(self._height * RIDGE_EXTRA_DEPTH)
         # Four ridge planes with atmospheric perspective: the faintest haze
         # plane sits deepest, each nearer plane is taller, darker and faster.
         self._haze = _make_ridge(
             self._far_width,
-            round(self._height * 0.24),
+            round(self._height * RIDGE_HEIGHTS[0]),
+            extra_depth,
             _RidgePalette(
                 theme.MOUNTAIN_FAR,
                 theme.MOUNTAIN_FAR_LIGHT,
@@ -283,7 +331,8 @@ class Scene:
         )
         self._far = _make_ridge(
             self._far_width,
-            round(self._height * 0.36),
+            round(self._height * RIDGE_HEIGHTS[1]),
+            extra_depth,
             _RidgePalette(
                 theme.MOUNTAIN_FAR,
                 theme.MOUNTAIN_FAR_LIGHT,
@@ -298,7 +347,8 @@ class Scene:
         self._mid_width = self._width * 2
         self._mid = _make_ridge(
             self._mid_width,
-            round(self._height * 0.30),
+            round(self._height * RIDGE_HEIGHTS[2]),
+            extra_depth,
             _RidgePalette(
                 theme.MOUNTAIN_MID,
                 theme.MOUNTAIN_MID_LIGHT,
@@ -312,7 +362,8 @@ class Scene:
         self._near_width = self._width * 2
         self._near = _make_ridge(
             self._near_width,
-            round(self._height * 0.19),
+            round(self._height * RIDGE_HEIGHTS[3]),
+            extra_depth,
             _RidgePalette(
                 theme.MOUNTAIN_NEAR,
                 theme.MOUNTAIN_NEAR_LIGHT,
@@ -325,6 +376,7 @@ class Scene:
         self._cloud_span_m = 170.0
         self._clouds = self._make_clouds()
         self._ground_tile = _make_ground_tile(64, self._height + 64, seed + 4)
+        self._marker = _make_marker()
 
     def _make_altitude_tints(self) -> list[pygame.Surface]:
         tints: list[pygame.Surface] = []
@@ -336,6 +388,33 @@ class Scene:
                         overlay.set_at((x, y), (*theme.SKY_HIGH_ALTITUDE, 235))
             tints.append(overlay)
         return tints
+
+    def _bake_sun_glow(self, radius: int) -> None:
+        """Dither a soft halo around the sun into the static sky.
+
+        Each affected pixel dithers from its own band colour toward the sun's
+        glow colour with a radial falloff, so the frame keeps a limited palette
+        while the sun reads as a bright modern bloom.
+        """
+        if radius <= 0:
+            return
+        cx, cy = self._sun_position
+        x0 = max(0, round(cx - radius))
+        x1 = min(self._width - 1, round(cx + radius))
+        y0 = max(0, round(cy - radius))
+        y1 = min(self._height - 1, round(cy + radius))
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                distance = math.hypot(x - cx, y - cy) / radius
+                if distance >= 1.0:
+                    continue
+                amount = (1.0 - distance) ** 1.6 * 0.85
+                colour = self._sky.get_at((x, y))
+                current = (colour.r, colour.g, colour.b)
+                self._sky.set_at(
+                    (x, y),
+                    theme.dither_color(current, theme.SUN_GLOW, x, y, amount),
+                )
 
     def _make_clouds(self) -> list[Cloud]:
         clouds: list[Cloud] = []
@@ -364,29 +443,34 @@ class Scene:
             self._draw_cloud(surface, camera, cloud)
 
         horizon = round(self._height * 0.72)
-        haze_y = horizon - self._haze.get_height() + round(self._height * 0.055)
+        haze_height = round(self._height * RIDGE_HEIGHTS[0])
+        haze_y = horizon - haze_height + round(self._height * 0.055)
         self._blit_tiled(surface, self._haze, haze_y, camera.parallax_offset(RIDGE_PARALLAX[0]))
 
-        far_y = horizon - self._far.get_height() + round(self._height * 0.045)
+        far_height = round(self._height * RIDGE_HEIGHTS[1])
+        far_y = horizon - far_height + round(self._height * 0.045)
         self._blit_tiled(surface, self._far, far_y, camera.parallax_offset(RIDGE_PARALLAX[1]))
 
+        mid_height = round(self._height * RIDGE_HEIGHTS[2])
+        near_height = round(self._height * RIDGE_HEIGHTS[3])
         mid_base = min(camera.ground_y, self._height * 0.94) + 9
         self._blit_tiled(
             surface,
             self._mid,
-            round(mid_base - self._mid.get_height()),
+            round(mid_base - mid_height),
             camera.parallax_offset(RIDGE_PARALLAX[2]),
         )
         if camera.ground_y < self._height + 20:
             self._blit_tiled(
                 surface,
                 self._near,
-                round(camera.ground_y - self._near.get_height() + 5),
+                round(camera.ground_y - near_height + 5),
                 camera.parallax_offset(RIDGE_PARALLAX[3]),
             )
 
         self._draw_distant_birds(surface, camera)
         self._draw_ground(surface, camera)
+        self._draw_markers(surface, camera)
 
     def _draw_cloud(self, surface: pygame.Surface, camera: Camera, cloud: Cloud) -> None:
         wrap_width = self._cloud_span_m * camera.pixels_per_meter + self._width
@@ -442,3 +526,21 @@ class Scene:
                 theme.GROUND_DARK,
                 (0, top + self._ground_tile.get_height(), self._width, self._height),
             )
+
+    def _draw_markers(self, surface: pygame.Surface, camera: Camera) -> None:
+        """Plant a milestone every MARKER_SPAN_M metres, scrolling with the ground."""
+        if camera.ground_y >= self._height + 8:
+            return
+        ground_y = round(camera.ground_y)
+        marker_height = self._marker.get_height()
+        left_margin_m = 8.0 / camera.pixels_per_meter
+        first = math.floor((camera.x_m - left_margin_m) / MARKER_SPAN_M) * MARKER_SPAN_M
+        index = 0
+        while True:
+            world_x = first + index * MARKER_SPAN_M
+            x = camera.screen_x(world_x)
+            if x > self._width + 8:
+                break
+            if x >= -8:
+                surface.blit(self._marker, (round(x), ground_y - marker_height + 2))
+            index += 1

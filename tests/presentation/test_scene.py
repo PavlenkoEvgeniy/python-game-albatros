@@ -116,6 +116,47 @@ def test_farthest_plane_is_paler_and_lower_contrast_than_the_near_one() -> None:
     assert haze_spread < near_spread
 
 
+def test_mountains_reach_the_ground_without_sky_gaps() -> None:
+    """Below the far plane's bottom edge only mountains and ground may show.
+
+    A distant plane's texture ends in a flat bottom edge; if the nearer planes
+    leave sky visible under it, the mountains read as floating islands.
+    """
+    scene, camera, surface = make_scene_and_camera()
+    camera.follow(0.0, 10.0, 10.0)  # a large dt lets the camera snap to target altitude
+    scene.draw(surface, camera)
+
+    sky = set(theme.SKY_BANDS) | {theme.SUN_GLOW, theme.SUN_CORE, theme.SUN_RING, theme.SKY_HORIZON}
+    far_bottom = round(180 * 0.72) + round(180 * 0.045)
+    for y in range(far_bottom + 1, min(180, int(camera.ground_y))):
+        for x in range(0, 320, 4):
+            assert tuple(surface.get_at((x, y))[:3]) not in sky, (x, y)
+
+
+def test_distance_markers_stand_every_50_metres() -> None:
+    size = (320, 180)
+    scene = Scene(size)
+    camera = Camera(width=size[0], height=size[1], pixels_per_meter=2.0)
+    camera.follow(100.0, 6.0, 10.0)  # ground in view, three markers on screen
+    surface = pygame.Surface(size)
+    scene.draw(surface, camera)
+
+    ground_y = round(camera.ground_y)
+
+    def marker_pixel_near(x: int) -> bool:
+        return any(
+            tuple(surface.get_at((x + dx, ground_y - 8))[:3]) == theme.TEXT for dx in range(0, 8)
+        )
+
+    for world_x in (100.0, 150.0, 200.0):
+        x = round(camera.screen_x(world_x))
+        assert marker_pixel_near(x), world_x
+    # halfway between markers the sky/grass shows, no pole
+    for world_x in (125.0, 175.0):
+        x = round(camera.screen_x(world_x))
+        assert not marker_pixel_near(x), world_x
+
+
 def test_ground_is_covered_with_grass() -> None:
     scene, camera, surface = make_scene_and_camera()
     camera.follow(0.0, 4.0, 10.0)  # a large dt lets the camera snap to target altitude

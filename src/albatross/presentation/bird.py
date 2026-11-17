@@ -8,7 +8,7 @@ import pygame
 
 from albatross.presentation import theme
 
-FLAP_DURATION_S = 0.32
+FLAP_DURATION_S = 0.26
 DRAW_SIZE = (36, 26)
 GRID_SIZE = (36, 26)
 
@@ -194,11 +194,16 @@ class Bird:
 
     @property
     def wing_lift(self) -> float:
-        """``-1`` is fully raised, ``+1`` is fully lowered."""
+        """``-1`` is fully raised, ``+1`` is fully lowered.
+
+        Gliding locks the wings in a single spread pose: the gentle drift stays
+        inside the spread phase's threshold, so the sprite never twitches. The
+        flap is one expressively strong down-up cycle back to the spread pose.
+        """
         if self._flap_timer > 0.0:
             progress = 1.0 - self._flap_timer / FLAP_DURATION_S
             return math.sin(progress * math.tau) * 0.95
-        return -0.12 + 0.06 * math.sin(self._time * 1.7)
+        return 0.04 + 0.03 * math.sin(self._time * 1.7)
 
     def notify_flap(self) -> None:
         self._flap_timer = FLAP_DURATION_S
@@ -213,12 +218,12 @@ class Bird:
         surface.blit(image, image.get_rect(center=center))
 
     def _sprite_for(self, wing_lift: float, vertical_speed: float) -> pygame.Surface:
-        phase = 0 if wing_lift < -0.35 else 1 if wing_lift < 0.10 else 2 if wing_lift < 0.55 else 3
+        phase = 0 if wing_lift < -0.35 else 1 if wing_lift < 0.25 else 2 if wing_lift < 0.65 else 3
         pitch = -1 if vertical_speed < -2.0 else 1 if vertical_speed > 2.0 else 0
         key = (phase, pitch)
         sprite = self._sprites.get(key)
         if sprite is None:
-            lift = (-0.9, -0.2, 0.35, 0.9)[phase]
+            lift = (-0.9, 0.0, 0.45, 0.9)[phase]
             sprite = _surface(_frame(lift, pitch * 0.13))
             self._sprites[key] = sprite
         return sprite

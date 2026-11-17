@@ -5,11 +5,15 @@ import pygame
 from albatross.presentation.bird import FLAP_DURATION_S, Bird
 
 
-def test_gliding_wing_lift_stays_subtle() -> None:
+def test_gliding_keeps_wings_in_a_single_spread_pose() -> None:
     bird = Bird()
+    poses = set()
     for _ in range(120):
-        assert -0.2 <= bird.wing_lift <= 0.0
+        assert 0.0 <= bird.wing_lift <= 0.1  # spread pose, no twitching
+        poses.add(pygame.image.tobytes(bird._sprite_for(bird.wing_lift, 0.0), "RGBA"))
         bird.update(0.016)
+
+    assert len(poses) == 1  # the glide never switches sprite phases
 
 
 def test_flap_animation_runs_and_finishes() -> None:
@@ -22,8 +26,10 @@ def test_flap_animation_runs_and_finishes() -> None:
         lifts.append(bird.wing_lift)
         bird.update(FLAP_DURATION_S / 20)
 
-    assert max(lifts) > 0.5
+    assert max(lifts) > 0.5  # a strong downstroke
+    assert min(lifts) < -0.5  # and a full upstroke before settling back
     assert bird.flapping is False
+    assert 0.0 <= bird.wing_lift <= 0.1
 
 
 def test_update_ignores_negative_time() -> None:
@@ -55,7 +61,7 @@ def test_draw_handles_extreme_vertical_speeds() -> None:
 def test_wing_phases_produce_distinct_non_empty_sprites() -> None:
     bird = Bird()
 
-    sprites = [bird._sprite_for(lift, 0.0) for lift in (-0.9, -0.2, 0.35, 0.9)]
+    sprites = [bird._sprite_for(lift, 0.0) for lift in (-0.9, 0.0, 0.45, 0.9)]
     payloads = {pygame.image.tobytes(sprite, "RGBA") for sprite in sprites}
 
     assert len(payloads) == len(sprites)
@@ -66,7 +72,7 @@ def test_sprite_keeps_clear_of_its_edges_in_every_pose() -> None:
     bird = Bird()
     speeds = (-100.0, -2.0, 0.0, 2.0, 100.0)
 
-    for lift in (-0.9, -0.2, 0.35, 0.9):
+    for lift in (-0.9, 0.0, 0.45, 0.9):
         for speed in speeds:
             sprite = bird._sprite_for(lift, speed)
             width, height = sprite.get_size()
@@ -82,7 +88,7 @@ def test_sprite_keeps_clear_of_its_edges_in_every_pose() -> None:
 def test_sprite_footprint_is_smaller_than_the_previous_design() -> None:
     bird = Bird()
 
-    for lift in (-0.9, -0.2, 0.35, 0.9):
+    for lift in (-0.9, 0.0, 0.45, 0.9):
         sprite = bird._sprite_for(lift, 0.0)
         bounds = sprite.get_bounding_rect(min_alpha=1)
 

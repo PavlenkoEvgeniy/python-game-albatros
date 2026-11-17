@@ -2,7 +2,7 @@
 ; The CI passes MyAppVersion, RepoRoot, SourceExe and OutputDir with /D.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.3.0"
+  #define MyAppVersion "0.4.0"
 #endif
 #ifndef RepoRoot
   #define RepoRoot "."
