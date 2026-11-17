@@ -75,9 +75,15 @@ uv run albatross --version
 
 ## Графика
 
-Вся сцена — векторный минимализм, нарисованный кодом: градиентное небо, солнце, облака, три
-слоя гор с параллаксом, земля, силуэт альбатроса с анимацией крыльев и следом взмаха. Внешних
-изображений и шрифтов нет — используется встроенный шрифт pygame с кириллицей.
+Вся игровая сцена — процедурный пиксель-арт, нарисованный кодом: ограниченная палитра, небо с
+Bayer-дизерингом, пиксельные облака, три фактурных слоя гор с параллаксом, тайловая земля,
+спрайт альбатроса с фазами крыльев и следом взмаха. Сцена рисуется на логическом холсте 320×180
+и увеличивается до окна целым коэффициентом без сглаживания; HUD остаётся в разрешении окна,
+чтобы русские и английские подписи были читаемыми. Внешних игровых изображений и шрифтов нет —
+используется встроенный шрифт pygame с кириллицей.
+
+Иконка окна и платформенные PNG/ICO/ICNS собираются из одного пиксельного генератора. Малые
+размеры 16–48 px имеют упрощённый силуэт и остаются читаемыми на ярлыках и в переключателе задач.
 
 ## Структура проекта
 
@@ -85,12 +91,12 @@ uv run albatross --version
 src/albatross/
   domain/          # чистая физика, состояния сессии, рекорд — без pygame
   application/     # игровой цикл, fixed timestep, ввод, связывание слоёв
-  presentation/    # сцена, птица, HUD, локализация, процедурный звук
+  presentation/    # сцена, птица, HUD, иконка, локализация, процедурный звук
   infrastructure/  # чтение и атомарная запись record.json
-tests/             # pytest + hypothesis; покрытие домена и хранилища 100%
+tests/             # pytest + hypothesis; тесты иконок и упаковки
 packaging/
-  icons/           # PNG/ICO/ICNS, сгенерированы из графики игры
-  linux/           # deb/rpm, .desktop, иконка, spec
+  icons/           # PNG/ICO/ICNS и linux/<size>/ для hicolor
+  linux/           # deb/rpm, .desktop, spec
   windows/         # Inno Setup установщик
   macos/           # сборка .dmg
 main.py            # точка входа для PyInstaller
@@ -119,28 +125,36 @@ uv run pytest
 
 ```bash
 uv run pyinstaller --onefile --windowed --noconfirm --clean \
-  --name Albatross-linux \
+  --name Albatross-linux --icon=packaging/icons/albatross.png \
   --collect-all pygame --copy-metadata albatross main.py
 ./dist/Albatross-linux --version
-SKIP_RPM=1 bash packaging/linux/build_packages.sh 0.1.0 dist/Albatross-linux dist/installers
+SKIP_RPM=1 bash packaging/linux/build_packages.sh 0.2.0 dist/Albatross-linux dist/installers
 ```
 
 Без `SKIP_RPM=1` нужен `rpmbuild`; в CI он устанавливается вместе с `rpm`. Windows-установщик
 собирается Inno Setup. macOS-образ (`packaging/macos/build_dmg.sh`) пока не входит в CI.
 
-Иконки генерируются из графики игры (нужен Pillow только на этапе генерации):
+Иконки генерируются из общего пиксельного генератора (Pillow входит в dev-группу, а готовые
+бинарные файлы коммитятся и нужны CI во время сборки):
 
 ```bash
-uv run --with pillow python packaging/make_icons.py
+uv run python packaging/make_icons.py
 ```
+
+Команда обновляет `packaging/icons/albatross.{png,ico,icns}`, набор
+`packaging/icons/linux/<size>x<size>/albatross.png` и контрольный лист
+`build/icon_contact_sheet.png` (каталог `build/` не коммитится). Linux-пакеты ставят все размеры
+в `/usr/share/icons/hicolor/<size>x<size>/apps/albatross.png`; Windows использует ICO для EXE,
+ярлыков и записи удаления.
 
 Релиз создаётся отправкой тега, совпадающего с версией в `pyproject.toml`:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 CI проверит тесты, соберёт deb/rpm и exe и прикрепит их к GitHub Release.
 
-Проект следует спецификации OpenSpec; активный change — `add-albatross-game`.
+Проект следует спецификации OpenSpec; активные changes — `add-albatross-game` (осталась
+дистрибуция и релиз) и `add-pixel-art-and-icons` (пиксель-арт и иконки).

@@ -18,9 +18,19 @@ PyInstaller build.
 %install
 install -Dm755 %{_sourcedir}/Albatross %{buildroot}%{_bindir}/albatross
 install -Dm644 %{_sourcedir}/albatross.desktop %{buildroot}%{_datadir}/applications/albatross.desktop
-install -Dm644 %{_sourcedir}/albatross.png %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/albatross.png
+for size in 16 24 32 48 64 128 256 512; do
+  install -Dm644 %{_sourcedir}/icons/${size}x${size}/albatross.png \
+    %{buildroot}%{_datadir}/icons/hicolor/${size}x${size}/apps/albatross.png
+done
 
 %files
 %{_bindir}/albatross
 %{_datadir}/applications/albatross.desktop
+%{_datadir}/icons/hicolor/16x16/apps/albatross.png
+%{_datadir}/icons/hicolor/24x24/apps/albatross.png
+%{_datadir}/icons/hicolor/32x32/apps/albatross.png
+%{_datadir}/icons/hicolor/48x48/apps/albatross.png
+%{_datadir}/icons/hicolor/64x64/apps/albatross.png
+%{_datadir}/icons/hicolor/128x128/apps/albatross.png
+%{_datadir}/icons/hicolor/256x256/apps/albatross.png
 %{_datadir}/icons/hicolor/512x512/apps/albatross.png

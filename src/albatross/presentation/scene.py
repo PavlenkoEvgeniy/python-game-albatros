@@ -1,4 +1,8 @@
-"""Procedural scenery: sky, sun, clouds, mountain layers and ground."""
+"""Deterministic procedural pixel-art scenery.
+
+Everything is generated at the logical resolution and cached. Static layers use
+a local seeded RNG; drawing a frame allocates no new textures.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +15,8 @@ import pygame
 from albatross.presentation import theme
 from albatross.presentation.camera import Camera
 
+RIDGE_STEPS = 160
+
 
 @dataclass(frozen=True, slots=True)
 class Cloud:
@@ -20,50 +26,120 @@ class Cloud:
     surface: pygame.Surface
 
 
+@dataclass(frozen=True, slots=True)
+class _RidgePalette:
+    base: theme.RGB
+    light: theme.RGB
+    shadow: theme.RGB
+    snow: theme.RGB | None = None
+
+
+def _ridge_height(t: float, amplitude: float, phase: float) -> float:
+    wave = 0.5 + 0.5 * math.sin(t * math.tau * 3.0 + phase)
+    detail = 0.5 + 0.5 * math.sin(t * math.tau * 7.0 + phase * 2.0)
+    return 0.20 + amplitude * (0.68 * wave + 0.32 * detail)
+
+
 def _make_ridge(
     width: int,
     height: int,
-    color: theme.RGB,
+    palette: _RidgePalette,
     phase: float,
     amplitude: float,
+    seed: int,
 ) -> pygame.Surface:
+    """Draw a tileable, stepped mountain layer with a few texture strata."""
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
-    steps = 96
-    points: list[tuple[float, float]] = []
-    for index in range(steps + 1):
-        t = index / steps
-        wave = 0.5 + 0.5 * math.sin(t * math.tau * 3.0 + phase)
-        detail = 0.5 + 0.5 * math.sin(t * math.tau * 7.0 + phase * 2.0)
-        crest = height * (0.22 + amplitude * (0.72 * wave + 0.28 * detail))
-        points.append((width * t, height - crest))
+    rng = random.Random(seed)
+    heights: list[int] = []
+    for x in range(width):
+        crest = height * _ridge_height(x / max(1, width - 1), amplitude, phase)
+        heights.append(max(2, min(height - 1, round(height - crest))))
+    heights[-1] = heights[0]
 
-    polygon = [(0, height), *points, (width, height)]
-    pygame.draw.polygon(surface, color, polygon)
-    pygame.draw.aalines(
-        surface,
-        theme.lerp_color(color, (255, 255, 255), 0.16),
-        False,
-        points,
-    )
+    for x, ridge_y in enumerate(heights):
+        pygame.draw.rect(
+            surface,
+            palette.base,
+            (x, ridge_y, 1, height - ridge_y),
+        )
+
+    # A lit crest makes the silhouette read as rock rather than a flat blob.
+    for x in range(1, width - 1):
+        previous = heights[x - 1]
+        current = heights[x]
+        if current < previous:
+            start = current
+        elif current > previous:
+            start = previous
+        else:
+            continue
+        for offset in range(2):
+            y = start + offset
+            if y < height:
+                surface.set_at((x, y), palette.light if offset == 0 else palette.shadow)
+
+    # Short, deterministic strata and scree flecks. They stay away from the
+    # crest so the skyline remains clean and readable.
+    streak_count = max(10, width // 26)
+    for _ in range(streak_count):
+        x = rng.randrange(width)
+        top = heights[x] + rng.randrange(4, max(5, min(28, height - heights[x])))
+        if top >= height:
+            continue
+        length = rng.randrange(2, 9)
+        colour = palette.shadow if rng.random() < 0.55 else palette.light
+        pygame.draw.rect(surface, colour, (x, top, length, 1))
+
+    if palette.snow is not None:
+        for x in range(width):
+            ridge_y = heights[x]
+            if ridge_y < round(height * 0.28) and (x + seed) % 5 < 2:
+                depth = 1 + (x + seed) % 3
+                pygame.draw.rect(
+                    surface,
+                    palette.snow,
+                    (x, ridge_y, 1, min(depth, height - ridge_y)),
+                )
     return surface
 
 
-def _make_cloud(width: int, height: int) -> pygame.Surface:
+def _make_cloud(width: int, height: int, rng: random.Random) -> pygame.Surface:
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
     puffs = (
-        (0.02, 0.42, 0.55, 0.55),
-        (0.20, 0.18, 0.58, 0.72),
-        (0.48, 0.32, 0.50, 0.60),
-        (0.10, 0.60, 0.80, 0.38),
+        (0.02, 0.40, 0.52, 0.42),
+        (0.18, 0.18, 0.48, 0.54),
+        (0.44, 0.32, 0.43, 0.42),
+        (0.12, 0.54, 0.72, 0.28),
     )
     for left, top, width_ratio, height_ratio in puffs:
-        rect = pygame.Rect(
-            round(width * left),
-            round(height * top),
-            round(width * width_ratio),
-            round(height * height_ratio),
+        pygame.draw.rect(
+            surface,
+            theme.CLOUD_SHADE,
+            pygame.Rect(
+                round(width * left),
+                round(height * top),
+                max(2, round(width * width_ratio)),
+                max(1, round(height * height_ratio)),
+            ),
         )
-        pygame.draw.ellipse(surface, theme.CLOUD, rect)
+    for left, top, width_ratio, height_ratio in puffs:
+        pygame.draw.rect(
+            surface,
+            theme.CLOUD_LIGHT,
+            pygame.Rect(
+                round(width * left),
+                round(height * top),
+                max(2, round(width * width_ratio)),
+                max(1, round(height * height_ratio * 0.5)),
+            ),
+        )
+    if width > 34 and rng.random() < 0.8:
+        pygame.draw.rect(
+            surface,
+            theme.CLOUD_LIGHT,
+            (width // 3, height // 5, max(2, width // 4), max(1, height // 3)),
+        )
     return surface
 
 
@@ -71,91 +147,134 @@ def _make_sun(radius: int) -> pygame.Surface:
     size = radius * 4
     surface = pygame.Surface((size, size), pygame.SRCALPHA)
     center = (size // 2, size // 2)
-    for step in range(radius, 0, -2):
-        alpha = max(0, round(58 * (1.0 - step / radius) ** 2))
-        pygame.draw.circle(
-            surface,
-            (*theme.SUN_GLOW, alpha),
-            center,
-            step,
-        )
-    pygame.draw.circle(surface, theme.SUN_CORE, center, max(4, radius // 3))
+    pygame.draw.circle(surface, theme.SUN_RING, center, radius)
+    pygame.draw.circle(surface, theme.SUN_GLOW, center, max(2, round(radius * 0.72)))
+    pygame.draw.circle(surface, theme.SUN_CORE, center, max(2, round(radius * 0.48)))
+    return surface
+
+
+def _make_ground_tile(width: int, height: int, seed: int) -> pygame.Surface:
+    rng = random.Random(seed)
+    surface = pygame.Surface((width, height))
+    surface.fill(theme.GROUND_BOTTOM)
+    grass_depth: list[int] = []
+    for x in range(width):
+        depth = 4 + (x * 7 + seed) % 3
+        grass_depth.append(depth)
+        pygame.draw.rect(surface, theme.GROUND_TOP, (x, 0, 1, depth))
+        surface.set_at((x, depth), theme.GROUND_LINE)
+        if x % 7 == 0:
+            blade = 2 + (x * 11 + seed) % 4
+            pygame.draw.rect(
+                surface,
+                theme.GROUND_LINE,
+                (x, max(0, depth - blade), 1, blade),
+            )
+    for _ in range(max(8, width // 4)):
+        x = rng.randrange(width)
+        y = rng.randrange(max(grass_depth) + 2, min(height, max(grass_depth) + 25))
+        colour = theme.GROUND_STONE if rng.random() < 0.55 else theme.GROUND_DARK
+        length = rng.randrange(1, 4)
+        pygame.draw.rect(surface, colour, (x, y, length, 1))
+    for y in range(14, height, 9):
+        shade = theme.GROUND_DARK if (y // 9) % 2 else theme.GROUND_BOTTOM
+        pygame.draw.rect(surface, shade, (0, y, width, 2))
     return surface
 
 
 class Scene:
-    """Pre-renders static layers and scrolls them with parallax."""
+    """Pre-renders static pixel layers and scrolls them with parallax."""
 
     def __init__(self, size: tuple[int, int], seed: int = 7) -> None:
         self._width, self._height = size
         self._rng = random.Random(seed)
-        self._sky = theme.vertical_gradient(
+        self._sky = theme.banded_gradient(
             self._width,
             self._height,
-            theme.SKY_TOP,
-            theme.SKY_HORIZON,
+            theme.SKY_BANDS,
         )
-        self._altitude_tint = pygame.Surface(size)
-        self._altitude_tint.fill(theme.SKY_HIGH_ALTITUDE)
-        self._altitude_tint.set_alpha(0)
+        self._altitude_tints = self._make_altitude_tints()
 
-        self._sun = _make_sun(round(self._height * 0.095))
-        self._sun_position = (round(self._width * 0.79), round(self._height * 0.15))
+        self._sun = _make_sun(max(5, round(self._height * 0.055)))
+        self._sun_position = (round(self._width * 0.81), round(self._height * 0.16))
 
         self._far_width = self._width * 2
         self._far = _make_ridge(
             self._far_width,
-            round(self._height * 0.46),
-            theme.MOUNTAIN_FAR,
+            round(self._height * 0.48),
+            _RidgePalette(
+                theme.MOUNTAIN_FAR,
+                theme.MOUNTAIN_FAR_LIGHT,
+                theme.MOUNTAIN_SHADOW,
+                theme.MOUNTAIN_SNOW,
+            ),
             phase=0.4,
             amplitude=0.9,
+            seed=seed + 1,
         )
         self._mid_width = self._width * 2
         self._mid = _make_ridge(
             self._mid_width,
-            round(self._height * 0.36),
-            theme.MOUNTAIN_MID,
+            round(self._height * 0.37),
+            _RidgePalette(
+                theme.MOUNTAIN_MID,
+                theme.MOUNTAIN_MID_LIGHT,
+                theme.MOUNTAIN_SHADOW,
+            ),
             phase=2.1,
             amplitude=1.0,
+            seed=seed + 2,
         )
         self._near_width = self._width * 2
         self._near = _make_ridge(
             self._near_width,
-            round(self._height * 0.20),
-            theme.MOUNTAIN_NEAR,
+            round(self._height * 0.23),
+            _RidgePalette(
+                theme.MOUNTAIN_NEAR,
+                theme.MOUNTAIN_NEAR_LIGHT,
+                theme.GROUND_DARK,
+            ),
             phase=4.6,
             amplitude=0.8,
+            seed=seed + 3,
         )
         self._cloud_span_m = 170.0
         self._clouds = self._make_clouds()
-        self._ground = theme.vertical_gradient(
-            self._width,
-            self._height,
-            theme.GROUND_TOP,
-            theme.GROUND_BOTTOM,
-        )
+        self._ground_tile = _make_ground_tile(64, self._height + 64, seed + 4)
+
+    def _make_altitude_tints(self) -> list[pygame.Surface]:
+        tints: list[pygame.Surface] = []
+        for level in range(6):
+            overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
+            for y in range(self._height):
+                for x in range(self._width):
+                    if theme.bayer_threshold(x, y) < level / 6.0:
+                        overlay.set_at((x, y), (*theme.SKY_HIGH_ALTITUDE, 235))
+            tints.append(overlay)
+        return tints
 
     def _make_clouds(self) -> list[Cloud]:
         clouds: list[Cloud] = []
         for _ in range(16):
-            cloud_width = self._rng.randint(46, 118)
-            cloud_height = self._rng.randint(22, 52)
+            cloud_width = self._rng.randint(24, 58)
+            cloud_height = self._rng.randint(9, 22)
             clouds.append(
                 Cloud(
                     x_m=self._rng.uniform(0.0, self._cloud_span_m),
                     altitude_m=self._rng.uniform(12.0, 132.0),
                     depth=self._rng.uniform(0.03, 0.10),
-                    surface=_make_cloud(cloud_width, cloud_height),
+                    surface=_make_cloud(cloud_width, cloud_height, self._rng),
                 )
             )
         return clouds
 
     def draw(self, surface: pygame.Surface, camera: Camera) -> None:
         surface.blit(self._sky, (0, 0))
-        tint_alpha = round(72 * theme.clamp01(camera.altitude_m / 110.0))
-        self._altitude_tint.set_alpha(tint_alpha)
-        surface.blit(self._altitude_tint, (0, 0))
-        surface.blit(self._sun, self._sun.get_rect(center=self._sun_position))
+        tint_level = min(5, round(5 * theme.clamp01(camera.altitude_m / 110.0)))
+        if tint_level:
+            surface.blit(self._altitude_tints[tint_level], (0, 0))
+        sun_rect = self._sun.get_rect(center=self._sun_position)
+        surface.blit(self._sun, sun_rect)
 
         for cloud in self._clouds:
             self._draw_cloud(surface, camera, cloud)
@@ -164,18 +283,18 @@ class Scene:
         far_y = horizon - self._far.get_height() + round(self._height * 0.04)
         self._blit_tiled(surface, self._far, far_y, camera.parallax_offset(0.05))
 
-        mid_base = min(camera.ground_y, self._height * 0.94) + 18
+        mid_base = min(camera.ground_y, self._height * 0.94) + 9
         self._blit_tiled(
             surface,
             self._mid,
             round(mid_base - self._mid.get_height()),
             camera.parallax_offset(0.18),
         )
-        if camera.ground_y < self._height + 40:
+        if camera.ground_y < self._height + 20:
             self._blit_tiled(
                 surface,
                 self._near,
-                round(camera.ground_y - self._near.get_height() + 10),
+                round(camera.ground_y - self._near.get_height() + 5),
                 camera.parallax_offset(0.34),
             )
 
@@ -206,55 +325,33 @@ class Scene:
 
     def _draw_distant_birds(self, surface: pygame.Surface, camera: Camera) -> None:
         for index, (world_x, altitude, size) in enumerate(
-            ((40.0, 34.0, 7), (52.0, 37.0, 5), (67.0, 31.0, 4))
+            ((40.0, 34.0, 3), (52.0, 37.0, 2), (67.0, 31.0, 2))
         ):
             x = camera.screen_x(world_x) + camera.parallax_offset(0.02) * (index + 1) * 0.1
             y = camera.screen_y(altitude)
-            if -50 < x < self._width + 50 and -50 < y < self._height:
-                pygame.draw.aalines(
-                    surface,
-                    theme.MOUNTAIN_NEAR,
-                    False,
-                    [(x - size, y), (x, y - size * 0.55), (x + size, y)],
-                )
-                pygame.draw.aalines(
-                    surface,
-                    theme.MOUNTAIN_NEAR,
-                    False,
-                    [(x + size, y), (x + size * 1.8, y - size * 0.3)],
-                )
+            if -10 < x < self._width + 10 and -10 < y < self._height:
+                points = [
+                    (round(x - size), round(y)),
+                    (round(x), round(y - size)),
+                    (round(x + size), round(y)),
+                ]
+                pygame.draw.lines(surface, theme.MOUNTAIN_NEAR, False, points, 1)
 
     def _draw_ground(self, surface: pygame.Surface, camera: Camera) -> None:
         ground_y = camera.ground_y
-        if ground_y >= self._height + 40:
+        if ground_y >= self._height + 10:
             return
 
         top = round(ground_y)
-        surface.blit(self._ground, (0, top))
-        pygame.draw.line(
-            surface,
-            theme.GROUND_LINE,
-            (0, top),
-            (self._width, top),
-            3,
-        )
-
-        shift = round(camera.parallax_offset(1.0)) % (self._width + 40)
-        for index in range(0, self._width + 40, 14):
-            x = (index - shift) % (self._width + 40) - 20
-            blade = 4 + (index * 37) % 13
-            pygame.draw.line(
+        tile_width = self._ground_tile.get_width()
+        shift = round(camera.parallax_offset(1.0)) % tile_width
+        x = -shift
+        while x < self._width:
+            surface.blit(self._ground_tile, (x, top))
+            x += tile_width
+        if top + self._ground_tile.get_height() < self._height:
+            pygame.draw.rect(
                 surface,
-                theme.GROUND_LINE,
-                (x, top),
-                (x + blade // 2, top - blade),
-                2,
-            )
-        for index in range(0, self._width + 40, 97):
-            x = (index - shift) % (self._width + 40) - 20
-            pygame.draw.circle(
-                surface,
-                theme.MOUNTAIN_NEAR,
-                (x, top + 14 + (index * 13) % 24),
-                2 + index % 3,
+                theme.GROUND_DARK,
+                (0, top + self._ground_tile.get_height(), self._width, self._height),
             )

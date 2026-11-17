@@ -19,14 +19,17 @@ trap 'rm -rf "$workdir"' EXIT
 
 mkdir -p "$outdir"
 architecture=$(dpkg --print-architecture)
+icon_sizes=(16 24 32 48 64 128 256 512)
 
 # --- Debian package ---------------------------------------------------------
 debroot="$workdir/deb"
 install -Dm755 "$binary" "$debroot/usr/bin/albatross"
 install -Dm644 "$repo_root/packaging/linux/albatross.desktop" \
   "$debroot/usr/share/applications/albatross.desktop"
-install -Dm644 "$repo_root/packaging/linux/albatross.png" \
-  "$debroot/usr/share/icons/hicolor/512x512/apps/albatross.png"
+for size in "${icon_sizes[@]}"; do
+  install -Dm644 "$repo_root/packaging/icons/linux/${size}x${size}/albatross.png" \
+    "$debroot/usr/share/icons/hicolor/${size}x${size}/apps/albatross.png"
+done
 
 mkdir -p "$debroot/DEBIAN"
 installed_size=$(du -sk "$debroot" | cut -f1)
@@ -60,7 +63,7 @@ else
     "$topdir/SPECS" "$topdir/SRPMS"
   cp "$binary" "$topdir/SOURCES/Albatross"
   cp "$repo_root/packaging/linux/albatross.desktop" "$topdir/SOURCES/"
-  cp "$repo_root/packaging/linux/albatross.png" "$topdir/SOURCES/"
+  cp -R "$repo_root/packaging/icons/linux" "$topdir/SOURCES/icons"
   sed "s/@VERSION@/$version/g" "$repo_root/packaging/linux/albatross.spec" \
     > "$topdir/SPECS/albatross.spec"
   rpmbuild --define "_topdir $topdir" -bb "$topdir/SPECS/albatross.spec"

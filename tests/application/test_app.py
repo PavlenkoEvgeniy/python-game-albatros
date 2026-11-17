@@ -14,7 +14,7 @@ from albatross.presentation.audio import NullAudioBackend, SoundEngine
 from albatross.presentation.i18n import Language
 from albatross.presentation.renderer import Renderer
 
-SIZE = (480, 270)
+SIZE = (640, 360)
 
 
 def make_config() -> FlightConfig:
@@ -129,6 +129,20 @@ def test_escape_pauses_and_resumes(tmp_path: Path) -> None:
     assert app.session.state.phase is GamePhase.PLAYING
 
 
+def test_rejected_flap_does_not_trigger_renderer_animation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app, _ = make_app(tmp_path)
+    notifications: list[None] = []
+    monkeypatch.setattr(app._renderer, "notify_flap", lambda: notifications.append(None))
+
+    app.tick([key_event(pygame.K_SPACE), key_event(pygame.K_SPACE)], 0.0)
+
+    assert len(notifications) == 1
+    assert app.session.state.phase is GamePhase.PLAYING
+
+
 def test_language_and_sound_shortcuts(tmp_path: Path) -> None:
     app, _ = make_app(tmp_path)
 
@@ -147,6 +161,19 @@ def test_quit_request_stops_the_loop(tmp_path: Path) -> None:
     app, _ = make_app(tmp_path)
 
     assert app.tick([pygame.event.Event(pygame.QUIT)], 0.1) is False
+
+
+def test_real_application_sets_a_generated_window_icon(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed: list[pygame.Surface] = []
+    monkeypatch.setattr(pygame.display, "set_icon", installed.append)
+
+    GameApp.create()
+
+    assert len(installed) == 1
+    assert installed[0].get_size() == (64, 64)
+    assert installed[0].get_bounding_rect(min_alpha=1).width > 40
 
 
 def test_record_write_failure_does_not_crash(

@@ -2,7 +2,7 @@
 ; The CI passes MyAppVersion, RepoRoot, SourceExe and OutputDir with /D.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.0"
+  #define MyAppVersion "0.2.0"
 #endif
 #ifndef RepoRoot
   #define RepoRoot "."
@@ -46,8 +46,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourceExe}"; DestDir: "{app}"; DestName: "Albatross.exe"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Albatross"; Filename: "{app}\Albatross.exe"
-Name: "{autodesktop}\Albatross"; Filename: "{app}\Albatross.exe"; Tasks: desktopicon
+Name: "{group}\Albatross"; Filename: "{app}\Albatross.exe"; IconFilename: "{app}\Albatross.exe"
+Name: "{autodesktop}\Albatross"; Filename: "{app}\Albatross.exe"; IconFilename: "{app}\Albatross.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\Albatross.exe"; Description: "{cm:LaunchProgram,Albatross}"; Flags: nowait postinstall skipifsilent
